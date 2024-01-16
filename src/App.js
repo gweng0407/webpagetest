@@ -15,6 +15,18 @@ const YourComponent = () => {
   useEffect(() => {
     const myVideo = videoRef.current;
 
+    // 소켓 연결 후 실행될 함수
+    const handleSocketConnect = () => {
+      console.log("소켓 연결됨....");
+      socket.emit("join-room", {
+        room_id: myRoomID,
+        name: "name",
+      });
+    };
+
+    // 소켓 이벤트 핸들러 등록
+    socket.on("connect", handleSocketConnect);
+
     const addVideoElement = (element_id, display_name) => {
       const videoGrid = document.getElementById("video_grid");
       videoGrid.appendChild(makeVideoElementCustom(element_id, display_name));
@@ -80,27 +92,27 @@ const YourComponent = () => {
 
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    socket.on("connect", () => {
+    // socket.on("connect", () => {
+    //   console.log("소켓 연결됨....");
+    //   socket.emit("join-room", {
+    //     room_id: "your_room_id", // 실제 사용할 방의 ID로 설정
+    //     name: "name",
+    //   });
+    // });
+    // socket.on("connected", () => {
+    //   console.log("소켓 연결됨....");
+    //   socket.current.emit("join-room", {
+    //     room_id: myRoomID,
+    //     name: "name",
+    //   });
+    // });
+
+    socket.on("connected", () => {
       console.log("소켓 연결됨....");
-      socket.current.emit("join-room", {
+      socket.emit("join-room", {
         room_id: myRoomID,
         name: "name",
       });
-    });
-
-    socket.on("user-connect", (data) => {
-      console.log("사용자 연결됨 ", data);
-      const peerID = data["sid"];
-      const displayName = data["name"];
-      setPeerList((prevPeerList) => ({ ...prevPeerList, [peerID]: undefined }));
-      addVideoElement(peerID, displayName);
-    });
-
-    socket.on("user-disconnect", (data) => {
-      console.log("사용자 연결 해제됨 ", data);
-      const peerID = data["sid"];
-      closeConnection(peerID);
-      removeVideoElement(peerID);
     });
 
     socket.on("user-list", (data) => {
@@ -124,6 +136,26 @@ const YourComponent = () => {
 
         startWebRTC();
       }
+    });
+
+    socket.on("user-connect", (data) => {
+      console.log("사용자 연결됨 ", data);
+      const peerID = data["sid"];
+      const displayName = data["name"];
+      setPeerList((prevPeerList) => ({ ...prevPeerList, [peerID]: undefined }));
+      addVideoElement(peerID, displayName);
+    });
+
+    socket.on("user-disconnect", (data) => {
+      console.log("사용자 연결 해제됨 ", data);
+      const peerID = data["sid"];
+      closeConnection(peerID);
+      removeVideoElement(peerID);
+    });
+
+    socket.emit("join-room", {
+      room_id: "your_room_id", // 클라이언트에서 사용할 방의 ID로 설정
+      name: "name",
     });
 
     const makeVideoElementCustom = (element_id, display_name) => {
@@ -226,6 +258,7 @@ const YourComponent = () => {
     return () => {
       // Cleanup logic here
       socket.disconnect();
+      socket.off("connect", handleSocketConnect);
     };
   }, [socket, myID, myRoomID, peerList]);
 
